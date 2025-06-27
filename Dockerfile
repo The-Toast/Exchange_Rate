@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
   libxext6 \
   libxfixes3 \
   libxkbcommon0 \
+  libcairo2 \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
