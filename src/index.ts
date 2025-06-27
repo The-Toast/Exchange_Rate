@@ -1,10 +1,13 @@
 import puppeteer from 'puppeteer'
 import express from 'express'
 import fs from 'fs/promises'
+import cors from 'cors'
 
 const app = express()
 const PORT = 3000
 const RATE_FILE = './rate.json'
+
+app.use(cors())
 
 async function fetchUsdRate() {
     const browser = await puppeteer.launch({
