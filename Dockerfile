@@ -1,10 +1,8 @@
-FROM node:20-bullseye-slim
-
 RUN apt-get update && apt-get install -y \
   wget \
   ca-certificates \
   fonts-liberation \
-  libatk-1.0-0 \
+  libatk1.0-0 \
   libatk-bridge2.0-0 \
   libcups2 \
   libdrm2 \
@@ -35,17 +33,3 @@ RUN apt-get update && apt-get install -y \
   libxrandr2 \
   libgbm1 \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY package*.json tsconfig.json ./
-
-RUN npm install
-
-COPY . .
-
-RUN npm run build
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
-CMD ["node", "dist/index.js"]
