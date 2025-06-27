@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y \
   wget \
   ca-certificates \
   fonts-liberation \
-  libatk1.0-0 \
+  libatk-1.0-0 \
   libatk-bridge2.0-0 \
   libcups2 \
   libdrm2 \
@@ -21,13 +21,25 @@ RUN apt-get update && apt-get install -y \
   libxshmfence1 \
   libxext6 \
   libxfixes3 \
-  libxkbcommon0 \
+  libpango1.0-0 \
   libcairo2 \
+  libxcb1 \
+  libx11-6 \
+  libxrender1 \
+  libxcb-dri3-0 \
+  libxcb-dri2-0 \
+  libxcb-glx0 \
+  libxss1 \
+  libxtst6 \
+  libnss3 \
+  libxrandr2 \
+  libgbm1 \
   --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package*.json tsconfig.json ./
+
 RUN npm install
 
 COPY . .
