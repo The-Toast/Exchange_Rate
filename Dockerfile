@@ -1,7 +1,7 @@
 FROM node:20-bullseye-slim
 
 RUN apt-get update && apt-get install -y \
-  chromium-browser \
+  chromium \
   wget \
   ca-certificates \
   fonts-liberation \
