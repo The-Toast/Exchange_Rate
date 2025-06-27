@@ -1,11 +1,10 @@
 FROM node:20-bullseye-slim
 
-# Puppeteer가 필요로 하는 라이브러리 설치
 RUN apt-get update && apt-get install -y \
   wget \
   ca-certificates \
   fonts-liberation \
-  libatk-1.0-0 \
+  libatk1.0-0 \
   libatk-bridge2.0-0 \
   libcups2 \
   libdrm2 \
@@ -27,7 +26,6 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY package*.json tsconfig.json ./
-
 RUN npm install
 
 COPY . .
