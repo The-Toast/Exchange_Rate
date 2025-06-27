@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer'
-import express from 'express'
+import express, { Request, Response } from 'express'
 import fs from 'fs/promises'
 import cors from 'cors'
 
@@ -63,7 +63,7 @@ async function saveUsdRateToFile() {
   }
 }
 
-app.get('/api/usd-rate', async (req, res) => {
+app.get('/api/usd-rate', async (req: Request, res: Response) => {
   try {
     const jsonStr = await fs.readFile(RATE_FILE, 'utf-8')
     const data = JSON.parse(jsonStr)
@@ -73,7 +73,7 @@ app.get('/api/usd-rate', async (req, res) => {
   }
 })
 
-app.post('/api/usd-rate/refresh', async (req, res) => {
+app.post('/api/usd-rate/refresh', async (req: Request, res: Response) => {
   const now = Date.now()
   if (now - lastManualRefresh < TEN_MINUTES) {
     const secondsLeft = Math.ceil((TEN_MINUTES - (now - lastManualRefresh)) / 1000)
