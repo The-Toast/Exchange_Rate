@@ -12,25 +12,42 @@ let lastManualRefresh = 0
 
 app.use(cors())
 
+const browserArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--disable-gpu'
+]
+
+function formatDate(date: Date) {
+    const pad = (n: number) => (n < 10 ? '0' + n : n)
+    return (
+        date.getFullYear() +
+        '-' +
+        pad(date.getMonth() + 1) +
+        '-' +
+        pad(date.getDate()) +
+        ' ' +
+        pad(date.getHours()) +
+        ':' +
+        pad(date.getMinutes()) +
+        ':' +
+        pad(date.getSeconds())
+    )
+}
+
 async function fetchUsdRate() {
     const browser = await puppeteer.launch({
         headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu'
-        ]
+        args: browserArgs
     })
     const page = await browser.newPage()
     try {
-        await page.goto('https://www.kebhana.com/cms/rate/index.do?contentUrl=/cms/rate/wpfxd651_01i.do', { waitUntil: 'domcontentloaded' })
-        await new Promise(r => setTimeout(r, 5000))
-        await page.waitForFunction(() => {
-            const table = document.querySelector('table.tblBasic tbody')
-            return table && table.querySelectorAll('tr').length > 0
-        }, { timeout: 15000 })
+        await page.goto('https://www.kebhana.com/cms/rate/index.do?contentUrl=/cms/rate/wpfxd651_01i.do', {
+            waitUntil: 'domcontentloaded'
+        })
+        await page.waitForSelector('table.tblBasic tbody tr', { timeout: 15000 })
         const rates = await page.$$eval('table.tblBasic tbody tr', rows =>
             rows.map(row => {
                 const tds = Array.from(row.querySelectorAll('td'))
@@ -45,7 +62,7 @@ async function fetchUsdRate() {
         return {
             currency: usdRate?.currency ?? 'USD',
             exchangeRate: usdRate?.exchangeRate ?? null,
-            datetime: now.toISOString()
+            datetime: formatDate(now)
         }
     } catch (fail) {
         console.error('Fail fetching USD rate:', fail)
@@ -68,12 +85,12 @@ app.get('/api/usd-rate', async (req: Request, res: Response) => {
         const jsonStr = await fs.readFile(RATE_FILE, 'utf-8')
         const data = JSON.parse(jsonStr)
         res.json(data)
-    } catch (fail) {
+    } catch {
         res.status(500).json({ fail: 'Failed to read rate data' })
     }
 })
 
-app.post('/api/usd-rate/refresh', async (req: Request, res: Response): Promise<void> => {
+app.post('/api/usd-rate/refresh', async (req: Request, res: Response) => {
     const now = Date.now()
     if (now - lastManualRefresh < TEN_MINUTES) {
         const secondsLeft = Math.ceil((TEN_MINUTES - (now - lastManualRefresh)) / 1000)
@@ -92,13 +109,58 @@ app.post('/api/usd-rate/refresh', async (req: Request, res: Response): Promise<v
             status: 'success',
             message: 'USD rate refreshed successfully',
             data,
-            nextAvailable: new Date(now + TEN_MINUTES).toISOString()
+            nextAvailable: formatDate(new Date(now + TEN_MINUTES))
         })
     } else {
         res.status(500).json({
             status: 'fail',
             message: 'Failed to fetch exchange rate'
         })
+    }
+})
+
+app.get('/api/stock/:ticker', async (req: Request, res: Response) => {
+    const symbol = req.params.ticker.toUpperCase()
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: browserArgs
+    })
+    const page = await browser.newPage()
+
+    await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    )
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => false
+        })
+    })
+
+    try {
+        await page.goto(`https://finance.yahoo.com/quote/${symbol}`, {
+            waitUntil: 'networkidle2',
+            timeout: 30000
+        })
+        await page.waitForSelector('span[data-testid="qsp-price"]', { timeout: 15000 })
+        const price = await page.$eval('span[data-testid="qsp-price"]', el => el.textContent?.trim() ?? '')
+        await page.waitForSelector('span[data-testid="qsp-price-change-percent"]', { timeout: 15000 })
+        const changePercentRaw = await page.$eval('span[data-testid="qsp-price-change-percent"]', el =>
+            el.textContent?.trim() ?? ''
+        )
+        const changePercent = changePercentRaw.replace(/[()]/g, '')
+        res.json({
+            ticker: symbol,
+            price,
+            changePercent
+        })
+    } catch (fail) {
+        console.error(`Error fetching stock for ${symbol}:`, fail)
+        res.status(500).json({
+            status: 'fail',
+            message: `Unable to fetch stock data for ${symbol}`
+        })
+    } finally {
+        await browser.close()
     }
 })
 
